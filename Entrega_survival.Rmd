@@ -1,0 +1,243 @@
+---
+title: "Entrega_Survival"
+author: "Mateo_F."
+date: '2022-06-18'
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(survival)
+str(lung)
+```
+```{r}
+lote <- lung$inst
+# Time :  de supervivencia de la planta 
+# Status : Estado de censura, 1-Censurado, 2-No censurado
+# Age : Edad de la palma
+hibridos <- lung$sex
+sev <- lung$ph.ecog
+N17 <- lung$meal.cal
+P17 <- lung$wt.loss
+
+```
+
+```{r}
+lung.ent <- Surv(lung$time, lung$status)
+# cbind(lung$time, lung$status, lung.ent)
+
+
+```
+# Modeling non parametric
+Método de estimador kaplan Meier
+```{r}
+lung.end.fit <- survfit(lung.ent ~ 1)
+# summary(lung.end.fit)
+
+```
+
+# Cuantiles de supervivencia
+
+```{r}
+plot(lung.end.fit, xlab = "Días", ylab = "Probabilidad de supervivencia", col = c("red","blue","blue"), main = "Cuantiles de supervivencia de palmas")
+abline(h = c(0.25, 0.5, 0.75), col = "#660000", lwd = 1.2)   
+#Área de probabilidad de individuos con 25% de supervivencia
+lines(c(170,195), c(0.7, 0.75), col = "blue", lwd = 1.85)
+lines(c(195,170), c(0.75, 0.8), col = "blue", lwd = 1.85)
+lines(c(170,145), c(0.8, 0.75), col = "blue", lwd = 1.85)
+lines(c(145,170), c(0.75, 0.7), col = "blue", lwd = 1.85)
+#Área de probabilidad de individuos con 50% de supervivencia
+lines(c(280,310), c(0.5, 0.57), col = "blue", lwd = 1.85)
+lines(c(310,360), c(0.57, 0.5), col = "blue", lwd = 1.85)
+lines(c(360,310), c(0.5, 0.43), col = "blue", lwd = 1.85)
+lines(c(310,280), c(0.43, 0.5), col = "blue", lwd = 1.85)
+#Área de probabilidad de individuos con 75% de supervivencia
+lines(c(550,655), c(0.33, 0.25), col = "blue", lwd = 1.85)
+lines(c(665,550), c(0.25, 0.19), col = "blue", lwd = 1.85)
+lines(c(550,460), c(0.19, 0.25), col = "blue", lwd = 1.85)
+lines(c(460,550), c(0.25, 0.33), col = "blue", lwd = 1.85)
+
+text(800, 0.8, "75% palmas vivas")
+text(800, 0.55, "50% palmas vivas")
+text(800, 0.3, "25% palmas vivas")
+
+legend(100, 0.2, c("IC", "Real"),lty = 7:8, col = c("red","blue","blue"))
+```
+
+# Interpretación:
+Se muestran áreas de probabilidad de supervivencia del 25, 50 y 75% de las plantas de palma a lo largo de 1013 días:
+* El 25% de las palmas aproximadamente mueren entre los 170 y los 195 días.
+* El 50% de las palmas aproximadamente mueren entre los 280 y los 360 días.
+* El 75% de las palmas aproximadamente mueren entre los 460 y los 665 días.  
+
+
+```{r}
+lung.end.fit <- survfit(lung.ent ~ sev, lung)
+plot(lung.end.fit, lty = 8:11, col = 7:10, xlab = "Días", ylab = "Probabilidad de supervivencia", lwd = 2, main = "Supervivencia de palmas con 4 niveles de severidad")
+legend(600, .9, c("Severidad = 0", "Severidad = 1", "Severidad = 2", "Severidad = 3"), lty = 8:11, col = 7:10)
+abline(h = 0.5, lwd = 2, col = "blue")
+abline(v = 200, lwd = 2, col = "blue")
+abline(v = 310, lwd = 2, col = "blue")
+abline(v = 390, lwd = 2, col = "blue")
+
+points(c(200, 310, 390), c(0.5, 0.5, 0.5), cex = 1.2)
+
+```
+
+# Interpretación 
+* Las plantas con nivel de severidad de 3 no logran sobrevivir a los 200 días, habría que consultar a profundidad el efecto que causa la enfermedad en la planta y podría considerarse ese nivel de severidad como crítico para las plantas de palma.
+* El 50% de las plantas que presentan severidad de grado 2, mueren a los 200 días; mientras que las que presentan severidad de grado 1 sobreviven hasta los 310 días (110 días más); Y los que son consideradas con grado de severidad 0 el 50% sobrevive hasta los 390 días.
+* Entre mayor es el grado de severidad, menor tiempo de supervivencia tendran las palmas. El nivel de severidad 3 puede ser considerado crítico para las palmas, y las que tienen nivel 0 tienen mayor probabilidad de supervivencia que las demás.
+
+
+```{r}
+lung.fit.hib <- survfit(lung.ent ~ hibridos , lung)
+plot(lung.fit.hib, lty = 1:2, conf.int = 0.95, col =c(7,10), xlab = "Días", ylab = "Probabilidad de supervivencia", lwd = 2, main = "Comparación de supervivencia de 2 tipos de hibridos de palma")
+legend(700, .9, c("Hibrido 1", "Hibrido 2"), lty = 1:2, col = c(7,10))
+
+abline(h = 0.5, col = "blue", lwd = 2)
+abline(v = 400, col = "blue", lwd = 2)
+abline(v = 270, col = "blue", lwd = 2)
+abline(h = 0.3, col = "blue", lwd = 2)
+abline(h = 0.08, col = "blue", lwd = 2)
+
+points(c(270, 400, 400, 770), c(0.5, 0.5, 0.3, 0.08), cex = 1.2)
+
+```
+
+# Interpretación
+
+* La probabiliad de supervivencia del 50% de las palmas hibrido1 se da a los 270 días, mientras que en los hibrido2 se da a los 400 días.
+* A los 400 días la proporción de supervivencia de los hibridos1 es del 30% es decir que el 70% de los ejemplares ya han muerto o desaparecido. En contraste con los hibridos2 donde la proproción de supervivencia para los 400 días es del 50% de los individuos.
+* Con estos resultados se obseva que el hibrido2 tiene una mayor proporción de supervivencia hasta antes de los 770 días, donde la probabilidad de supervivencia de los 2 hibridos es la misma 8%.
+* En conclusión, es recomendable hacer siembra del hibrido2 para una mayor tiempo de permanencia de las plantas y por lo tanto mayor tiempo de producción.
+
+# Intervalos de confianza para el estimador Kaplan-Meier 
+
+```{r}
+#install.packages("km.ci")
+library(km.ci)
+lung.end.fit <- survfit(lung.ent ~ 1)
+
+b <- km.ci(lung.end.fit, conf.level = 0.95, tl = NA, tu = NA, method = "loghall")
+
+plot(b, lty = 2, lwd = 2, col = 'red', main = "Intervalos de confianza estimadores de supervivencia", ylab = "Probabilidad de supervivencia", xlab = "Días")
+lines(lung.end.fit, lwd=2, lty=1, col = 'black')
+lines(lung.end.fit, lwd=1, lty=4, conf.int=T, col = 'blue')
+
+linetype<-c(1, 2, 4)
+legend(600, .9, c("Kaplan-Meier", "Hall-Wellner", "Pointwise"),
+       lty = linetype,
+       col = c('red', 'black', 'blue'))
+
+abline(h = 0.5, col='maroon3', lwd=2)
+abline(v = 310, col='maroon3', lwd=2)
+
+
+```
+
+# Interpretación 
+* El intervalo de confianza del estimador Kaplan-Meier tiene un rango mucho más amplio que los demás, esto puede ser porque maneja un porcentaje de confianza mayor que los otros, y acá nos está indicando que la probabilidad de supervivencia de las plantas puede ser muy amplia en los primeros días (0-100) y en los últimos (>600).
+* Los estimadores Hall-Wellner y Pointwise, tienen un intervalo de confianza igual presentando bandas más pequeñas, debido al porcentaje de confianza que maneja.
+
+```{r}
+aalen.fit.ent<- survfit(coxph(lung.ent~1), type="aalen")
+sum_aalen.fit.ent = summary(aalen.fit.ent)
+
+plot(aalen.fit.ent, col="red",lwd=1,lty=1, main = 'Estimador Nelson-Aelen vs Kaplan-Meier',ylab = "Probabilidad de supervivencia", xlab = "Días")
+lines(lung.end.fit, lwd=1, lty=1, col = "#0066CC")
+legend(600, 0.9,
+       c("Nelson-Aalen", "Kaplan-Meier"),
+       lty=c(1,1),
+col=c("red", "#0066CC"))
+```
+
+# Interpretación
+* Los intervalos Nelson-Aelen y Kaplan-Meier no presentan diferencias, podría utilizarse cualquiera de los dos para ver la probabilidad de supervivencia de las palmas a lo largo de 1000 días
+
+
+```{r}
+barplot(sum_aalen.fit.ent$time, cumsum(sum_aalen.fit.ent$n.event), xlab = "Número de muertes acumuladas", ylab = "Días", col = "red", main = "Muertes acumuladas de plantas de palma en el tiempo", ylim = c(0,1000))
+```
+
+# Interpretación
+* El número de eventos ocurridos (Muerte de la planta de palma) en el tiempo(días) aumenta constantemente, para los 600 días más del 50% de las palmas han muerto y para los 800 días probablemente quede menos del 20% de las plantas vivas
+
+```{r}
+mod_suv_ent = lm(cumsum(sum_aalen.fit.ent$n.event) ~ sum_aalen.fit.ent$time)
+summary(mod_suv_ent)
+
+plot(sum_aalen.fit.ent$time, cumsum(sum_aalen.fit.ent$n.event), pch = 16, ylab = "Suma acumulada de muertes", xlab = "Días", main = "Modelo de la suma acumulada de muertes de palma en el tiempo")
+abline(mod_suv_ent, col = "red", lwd = 2)
+```
+
+# Interpretación
+*El modelo nos indica que el tiempo es importante en la cantidad de muertes acumuladas de plantas, la recta que mejor se ajusta a este modelo se presenta en color rojo.
+
+```{r}
+survdiff(lung.ent~sev,lung)
+```
+
+# Interpretación
+*Esta función survdiff nos indica con el parámetro Chi-cuadrado que los niveles de severidad (0 - 4) no cumplen la hipótesis de igualdad, es decir que la probabilidad de encontrar 2 curvas iguales en los diferentes grados de severidad es baja, los niveles de severidad de la enfermedad son diferentes.
+
+
+```{r}
+# Prueba de log-rank or Mantel-Haenszel
+survdiff(lung.ent~hibridos,lung, rho = 0)
+```
+
+# Interpretación
+* Se usa el rango logarítmico al ser 2 niveles los que se comparan, indicando que la curva de supervivencia del híbrido 1 y el híbrido 2 son diferentes. 
+
+
+```{r}
+# Prueba de Peto & Peto modification of the Gehan-Wilcoxon test
+survdiff(lung.ent~hibridos,lung, rho = 1)
+```
+
+# Interpretación
+* De acuerdo a la prueba Peto & Peto, las curvas de supervivencia de los híbridos son diferentes.
+
+```{r}
+survdiff(lung.ent~hibridos + sev,lung)
+```
+
+# Interpretación
+* De acuerdo a la interacción entre los híbridos y los niveles de severidad, se rechaza la hipótesis de igualdad de curvas de supervivencia, es decir las curvas de supervivencia de la interacción (Hibrido-Severidad) son diferentes.
+
+# Modelo paramétrico
+
+```{r}
+par.wei.ent <- survreg(lung.ent~1,dist="w")
+par.wei.ent
+```
+
+```{r}
+kappa.ent <- par.wei.ent$scale
+lambda.ent <- exp(-par.wei.ent$coeff[1])
+zeit.ent <- seq(from=0,to=1100,length.out=1000)
+s.ent <- exp(-(lambda.ent*zeit.ent)^kappa.ent)
+h.ent <- lambda.ent^kappa.ent *kappa.ent*zeit.ent^(kappa.ent-1)
+par(mfrow=c(2,1))
+plot(zeit.ent,h.ent,xlab="Days",ylab="h(t)", pch = 16, cex = 0.1, las = 1, main = "Riesgo de muerte en el tiempo")
+
+plot(zeit.ent,s.ent,xlab="Days",ylab="s(t)", pch = 16, cex = 0.1, las = 1, main = "Supervivencia en el tiempo")
+
+```
+
+# Interpretación
+
+*El riesgo de muerte en el tiempo va disminuyendo en un modelo paramétrico donde el tiempo sigue una distribución Weibull.
+*La probabilidad de supervivencia de las palmas disminuye en el tiempo de una forma similar a cuando se realiza con un método no paramétrico (función "Surv()")
+
+# Conclusión 
+* Como conclusión se recomienda plantear un manejo de la enfermedad con el fin de reducir el grado de severidad de esta y así poder aumentar el tiempo de vida de las palmas. Además hacer uso de los hibridos 2 que tienen mayor tiempo de supervivencia  días los 770 días
+* Es importante conocer la probabilidad de ocurrencia de un evento que afecta la supervivencia de las plantas de palma, en este caso el grado de severidad de la enfermedad o el tipo de híbrido utilizado puede hacer que el tiempo de producción sea mayor y de ese modo obtener beneficios económicos 
+* Es fundamental conocer y realizar pruebas de diferentes métodos para la supervivencia de las plantas, debido a que muchos estimadores pueden mostrar cesgos o comportamientos en los datos que ayudan a identificar problemas para la producción
+
