@@ -1,0 +1,326 @@
+---
+title: "Logistic Regression"
+author: "Mateo_F."
+date: '2022-06-27'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Datos
+
+```{r}
+set.seed(993)
+edad <- abs(round(rnorm(n = 1000,
+                        mean = 67,
+                        sd = 2)))
+dap <- abs(round(rnorm(n = 1000,
+                      mean = 30,
+                      sd = 3), 1)) #diámetro a la altura del pecho
+hibrido <- factor(rbinom(n = 1000,
+                         size = 1,
+                         prob = 0.6),
+                  labels = c('h1', 'h2'))
+rto <- abs(round(rnorm(n = 1000,
+                       mean = 80,
+                       sd = 5), 1)) #Rendimiento
+
+cloA <- abs(round(rnorm(n = 1000,
+                        mean = 320,
+                        sd = 10)))
+
+z <- 0.22 * edad - 0.12 * cloA + dap -8 #Variable artificial
+
+pr <- 1/(1+exp(-z)) # Probabilidad de aborto
+
+y = rbinom(1000,1,pr) # Abortos
+
+abortos <- factor(rbinom(1000, 1, pr),
+                  labels = c('Si', 'No'))
+
+data <- data.frame(edad,
+                   dap,
+                   hibrido,
+                   rto,
+                   cloA,
+                   abortos)
+## Modificados
+library(faux)
+
+dfa <- rnorm_multi(n = 1000,
+            mu = c(67, 30, 30, 320),
+            sd = c(2, 3, 5, 10),
+            varnames = c('Edad1', 'dap1', 'rto1', 'clolA'),
+            r = c(0.4, 0.6, 0.5, 0.6, 0.7, 0.8))
+
+dfa$hibrido1 <- round(runif(n = 1000, min = 0,max = 1.2))
+
+w <- 0.5 * dfa$clolA - 0.01 * dfa$dap - 0.6 * dfa$rto - 0.02 * dfa$Edad
+
+dfa$abortos1 <- ifelse(w > 140, 1, 0)
+
+```
+
+# Primer paso : análisis Univariado 
+
+* Se realiza el análisis pero lo correcto es hacer un análisis multivariado
+
+```{r}
+univariable_clolA <- glm(abortos1 ~ clolA, family = binomial, data = dfa)
+summary(univariable_clolA)
+```
+
+* La clorofila tiene efecto sobre el los abortos florales en palmas.
+
+```{r}
+univariable_dap1 <- glm(abortos1 ~ dap1, family = binomial, data = dfa) 
+summary(univariable_dap1)
+```
+
+
+* El diámetro de la palma tiene efecto sobre el los abortos florales.
+
+```{r}
+univariable_edad1 <- glm(abortos1 ~ Edad1, family = binomial, data = dfa)
+summary(univariable_edad1)
+```
+
+* La edad de la palma tiene efecto sobre el los abortos florales.
+
+```{r}
+univariable_rto1 <- glm(abortos1 ~ rto1, family = binomial, data = dfa)
+summary(univariable_rto1)
+```
+
+
+* El rendimiento tiene efecto sobre el los abortos florales en palmas.
+
+```{r}
+univariable_h1 <- glm(abortos1 ~ hibrido1, family = binomial, data = dfa) 
+summary(univariable_h1)
+```
+
+
+* Los hibridos no tienen efecto sobre el los abortos florales en palmas.
+
+# Segundo paso : análisis multivariado
+
+* Se hace con el fin de observar que variables tienen efecto sobre el aborto floral en palmas
+
+```{r}
+mod1 <- glm(abortos1 ~ dfa$Edad1 + dfa$dap1 + dfa$rto1 + dfa$clolA + dfa$hibrido1, data = dfa)
+summary(mod1)
+```
+
+* De acuerdo al resumen las variables que tienen efecto sobre el aborto floral son la edad(Edad1), el rendimiento(rto1) y la clorofila (clolA), entonces se procede a eliminar una a una las variables que parecen no tener efecto, se comienza con la que mayor p-valor tiene en este caso es el hibrido
+
+```{r}
+mod2 <- glm(abortos1 ~ dfa$Edad1 + dfa$dap1 + dfa$rto1 + dfa$clolA, data = dfa)
+summary(mod2)
+```
+
+
+* Ya eliminando el hibrido se procede a eliminar la variable que sigue sin tener efecto sobre los abortos florales, en este caso es el diametro a la altura del pecho (dap1)
+
+```{r}
+mod3 <- glm(abortos1 ~ dfa$Edad1 + dfa$rto1 + dfa$clolA, data = dfa)
+summary(mod3)
+```
+
+
+* De acuerdo al modelo se observa que las demás variables son importantes en el aborto floral en palma, por lo tanto no se elimina ninguna más ni siquiera cuando el p valor del diametro a la altura del pecho(dap1) es mayor cercano al 5%
+
+# Delta coef
+
+* Para observar que la eliminación de las variables no tiene un efecto importante en la variable respuesta se hace una diferencia de coeficientes, donde si el coeficiente tuvo un cambio mayor al 20% la variable eliminada si tiene efecto sobre los abortos florales.
+
+```{r}
+del_coef1 <- abs((coef(mod2)-coef(mod1)[-6]))
+round(del_coef1, 3)
+```
+
+```{r}
+del_coef2 <- abs((coef(mod3)-coef(mod2)[-3]))
+round(del_coef2, 3)
+```
+
+* Comprobamos que al eliminar las variables y hacer la diferencia de coeficientes no supera el 20%, por lo tanto las variables eliminadas no tienen efecto sobre los abortos florales
+
+```{r}
+library(lmtest)
+
+lrtest(mod3, mod2)
+```
+
+
+* De acuerdo este test, observamos que la eliminacion de la variable edad no es muy importante sobre los abortos florales, por lo tanto el modelo no difiere cuando se quita la variable.
+
+# Prueba de comparación Chi-cuadrado
+
+```{r}
+anova(mod3, mod2, test = 'Chisq')
+```
+
+* Confirmamos que la eliminación de la variable edad, no cambia el modelo, es decir los abortos no son alterados por esa variable.
+
+# Tercer paso : Comprobación de linealidad
+
+```{r}
+pred <- fitted.values(mod3)
+par(mfrow = c(2, 3))
+scatter.smooth(dfa$rto1, pred,cex = 0.5)
+scatter.smooth(dfa$clolA, pred, cex = 0.5)
+scatter.smooth(dfa$dap1, pred, cex = 0.5)
+```
+
+* Se presenta linealidad entre el rendimiento(rto1) y la probabilidad de abortos florales
+* Se presenta linealidad entre el clorofila(clolA) y la probabilidad de abortos florales
+* Se presenta linealidad entre el diametro a la altura del pecho(dap1) y la probabilidad de abortos florales
+
+
+# Paso 4: Interacción entre las covariables
+
+```{r}
+model_inter1 <- glm(abortos1 ~ dfa$dap1 + dfa$rto1 + dfa$Edad1 + dfa$dap1:dfa$rto1,family = 'binomial' , data = dfa)
+summary(model_inter1)
+```
+
+* El modelo1 indica que la interacción dap:rto no tiene efecto en los abortos florales
+
+```{r}
+model_inter2 <- glm(abortos1 ~ dfa$dap1 + dfa$rto1 + dfa$Edad1 + dfa$dap1:dfa$Edad1,family = 'binomial',data = dfa)
+summary(model_inter2)
+```
+
+*El modelo 2 indica que la interacción dap:edad tampoco tiene efecto sobre abortos florales 
+
+```{r}
+model_inter3 <- glm(abortos1 ~ dfa$dap1 + dfa$rto1 + dfa$Edad1 + dfa$rto1:dfa$Edad1,family = 'binomial',data = dfa)
+summary(model_inter3)
+ 
+```
+
+*El modelo 3 indica que la interacción rto:edad tampoco tiene efecto sobre abortos florales 
+
+
+```{r}
+model_inter4 <- glm(abortos1 ~ dfa$Edad1 + dfa$rto1 + dfa$dap1 + dfa$Edad1:dfa$rto1 + dfa$Edad1:dfa$dap1 + dfa$rto1:dfa$dap1, family = 'binomial', data = dfa)
+summary(model_inter4)
+```
+
+
+```{r}
+library(lmtest)
+
+lrtest(model_inter4, model_inter1)
+lrtest(model_inter4, model_inter2)
+lrtest(model_inter4, model_inter3)
+```
+
+*La interacción en el modelo no es importante entonces tomamos el modelo sencillo 
+
+```{r}
+library(lmtest)
+library(magrittr)
+library(dplyr)
+
+rtaB <- ifelse(mod3$fitted.values>1, 1, ifelse(mod3$fitted.values<0,0,mod3$fitted.values))
+
+
+
+prop_ab <- rtaB*100
+cat_Edad1 <- cut(dfa$Edad1,breaks = 4)
+cat_clolA <- cut(dfa$clolA,breaks=4)
+data_2 <- data.frame(cat_Edad1, cat_clolA, prop_ab)
+
+tips2 <- data_2 %>% 
+  group_by(cat_clolA, cat_Edad1) %>% 
+  summarise(media_prop_abortos = mean(prop_ab))
+
+#Graficando
+library(ggplot2)
+tips2$tip_groups
+
+ggplot(data = tips2) +
+  aes(x = cat_Edad1, y = media_prop_abortos, color = cat_clolA) +
+  geom_line(aes(group = cat_clolA))
+
+
+```
+
+
+```{r}
+rta2 = rtaB
+prop_ab2 <- rta2*100
+cat_Edad2 <- cut(dfa$Edad1,breaks = 4)
+cat_rto1 <- cut(dfa$rto1,breaks=4)
+data_3 <- data.frame(cat_Edad2, cat_rto1, prop_ab2)
+
+tips3 <- data_3 %>% 
+  group_by(cat_rto1, cat_Edad2) %>% 
+  summarise(media_prop_abortos2 = mean(prop_ab2))
+
+#Graficando
+library(ggplot2)
+tips3$tip_groups
+
+ggplot(data = tips3) +
+  aes(x = cat_Edad2, y = media_prop_abortos2, color = cat_rto1) +
+  geom_line(aes(group = cat_rto1))
+```
+
+```{r}
+rta3 = rtaB
+prop_ab3 <- rta3*100
+cat_clolA3 <- cut(dfa$clolA,breaks = 4)
+cat_rto2 <- cut(dfa$rto1,breaks=4)
+data_4 <- data.frame(cat_clolA3, cat_rto2, prop_ab3)
+
+tips4 <- data_4 %>% 
+  group_by(cat_rto2, cat_clolA3) %>% 
+  summarise(media_prop_abortos3 = mean(prop_ab3))
+
+#Graficando
+library(ggplot2)
+tips4$tip_groups
+
+ggplot(data = tips4) +
+  aes(x = cat_clolA3, y = media_prop_abortos3, color = cat_rto2) +
+  geom_line(aes(group = cat_rto2))
+```
+
+* Se comprueba gráficamente que no hay interacción entre la edad y la clorofila, ni la clorofila y el rendimiento pero puede haber en la edad y el rendimiento. Estadísticamente la interacción no es importante.
+
+
+## Matriz de confusión valores observados de abortos con valores predichos de abortos
+
+```{r}
+library(ResourceSelection)
+cut_prob1 <- ifelse(fitted(mod3) > 0.5, 1, 0)
+table(mod3$y, cut_prob1)
+
+hoslem.test(mod3$y, fitted(mod3))
+```
+
+* La matríz de confusión nos muestra que es un buen modelo, entre los valores predichos y los observados se abarca más del 90% de los datos. Y el test GOF refuerza esta hipótesis
+
+```{r}
+Predprob1<-predict(mod3,type="response")
+plot(Predprob1,jitter(as.numeric(dfa$abortos1),0.5), cex=0.5, ylab="Abortos", xlim = c(0,1), xlab = 'Predicción de probabilidad de abortos')
+abline(v = 0.5, col = 'red')
+text(x = 0.8, y = 0.8, 'alta probabilidad de abortos, \n predicha y observada')
+text(x = 0.2, y = 0.2, 'alta probabilidad de no abortos, \n predicha y observada')
+
+
+```
+
+*Este gráfico confirma que el modelo es muy bueno, nos indica que la probabilidad de abortar entre los datos predichos y los observados es alta, por lo tanto se concluye que el modelo representa la probabilidad de abortos florales en palmas. 
+
+
+
+
+
+
+
